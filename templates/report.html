@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relatório da sessão</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="report-page">
+    <section class="page-header">
+      <p class="eyebrow">Sessão concluída</p>
+      <h1>Relatório da sessão</h1>
+      <p class="page-subtitle">
+        Um resumo rápido do seu desempenho nesta rodada de treino.
+      </p>
+    </section>
+
+    <section class="stats-grid">
+      <article class="stat-card">
+        <span class="stat-label">Exercícios totais</span>
+        <strong class="stat-value">{{ report['total_exercises'] }}</strong>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Concluídos</span>
+        <strong class="stat-value">{{ report['completed_exercises'] }}</strong>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Corretos</span>
+        <strong class="stat-value">{{ report['successful_exercises'] }}</strong>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Erros totais</span>
+        <strong class="stat-value">{{ report['total_wrong_moves'] }}</strong>
+      </article>
+
+      <article class="stat-card stat-card-wide">
+        <span class="stat-label">Tempo total da sessão</span>
+        <strong class="stat-value">{{ '%.2f'|format(report['duration_seconds'] or 0) }} s</strong>
+      </article>
+    </section>
+
+    <section class="table-card">
+      <div class="table-header">
+        <h2>Detalhe por exercício</h2>
+      </div>
+
+      <div class="table-wrap">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Exercício</th>
+              <th>Tempo (s)</th>
+              <th>Melhor tempo anterior (s)</th>
+              <th>Média anterior (s)</th>
+              <th>Treinado antes</th>
+              <th>Erros</th>
+              <th>Sucesso</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in attempts %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ row['exercise_id'] }}</td>
+              <td>{{ '%.2f'|format(row['duration_seconds'] or 0) }}</td>
+              <td>
+                {% if row['best_previous_time'] is not none %}
+                  {{ '%.2f'|format(row['best_previous_time']) }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if row['avg_previous_time'] is not none %}
+                  {{ '%.2f'|format(row['avg_previous_time']) }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>{{ row['trained_before_count'] }}</td>
+              <td>{{ row['wrong_moves_count'] }}</td>
+              <td>
+                <span class="status-badge {{ 'status-ok' if row['success'] else 'status-fail' }}">
+                  {{ 'Sim' if row['success'] else 'Não' }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="page-actions">
+      <a href="/" class="secondary-link">Voltar ao início</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pica-Pau MVP</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="home-page">
+    <section class="hero-card">
+      <p class="eyebrow">Treino de padrões táticos</p>
+      <h1>Pica-Pau MVP</h1>
+      <p class="hero-text">
+        Treino de exercícios em linha fixa, com validação de legalidade via
+        <strong>python-chess</strong>, controle de tempo e relatório ao final da sessão.
+      </p>
+
+      <div class="hero-features">
+        <div class="feature-pill">Set com poucos exercícios</div>
+        <div class="feature-pill">Linha única</div>
+        <div class="feature-pill">Tempo por exercício e por sessão</div>
+        <div class="feature-pill">Relatório simples</div>
+      </div>
+
+      <form method="post" action="/start" class="hero-actions">
+        <button type="submit" class="primary-btn">Começar sessão</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

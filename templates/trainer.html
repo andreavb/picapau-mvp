@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Treino</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Treino Pica-Pau</h1>
+
+  <div class="layout">
+    <div class="board-area">
+      <div class="board-frame">
+        <div class="board-with-ranks">
+          <div class="ranks" aria-hidden="true">
+            <span>8</span>
+            <span>7</span>
+            <span>6</span>
+            <span>5</span>
+            <span>4</span>
+            <span>3</span>
+            <span>2</span>
+            <span>1</span>
+          </div>
+
+          <div class="board-wrap">
+            <div id="board" class="board" aria-label="Tabuleiro de xadrez"></div>
+
+            <div class="coords" aria-hidden="true">
+              <span>a</span>
+              <span>b</span>
+              <span>c</span>
+              <span>d</span>
+              <span>e</span>
+              <span>f</span>
+              <span>g</span>
+              <span>h</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="small board-help">Clique na casa de origem e depois na de destino.</p>
+    </div>
+
+    <div class="panel">
+      <div class="meta">
+        <h2 id="title">Carregando...</h2>
+        <p id="description"></p>
+        <p><strong>Exercício:</strong> <span id="progress"></span></p>
+        <p><strong>Lado a jogar:</strong> <span id="turn"></span></p>
+        <p><strong>Erros no exercício:</strong> <span id="errors">0</span></p>
+        <p><strong>Tempo da sessão:</strong> <span id="session-timer">0.0</span>s</p>
+        <p class="small">Este MVP aceita apenas a linha treinada e promove automaticamente para dama.</p>
+      </div>
+
+      <div class="meta">
+        <p class="message" id="message"></p>
+        <button type="button" onclick="window.location.href='/report'">
+          Encerrar e ver relatório
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PIECES = {
+      'P': '♙', 'N': '♘', 'B': '♗', 'R': '♖', 'Q': '♕', 'K': '♔',
+      'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚'
+    };
+
+    let currentFen = null;
+    let sessionStart = Date.now();
+    let selectedSquare = null;
+    let legalTargets = [];
+
+    function setMessage(text, isError = false) {
+      const el = document.getElementById('message');
+      el.textContent = text;
+      el.className = 'message ' + (isError ? 'err' : 'ok');
+    }
+
+    function updateSessionTimer() {
+      const seconds = (Date.now() - sessionStart) / 1000;
+      document.getElementById('session-timer').textContent = seconds.toFixed(1);
+    }
+
+    setInterval(updateSessionTimer, 100);
+
+    function fenBoardPart(fen) {
+      return fen.split(' ')[0];
+    }
+
+    function fenTurnPart(fen) {
+      return fen.split(' ')[1];
+    }
+
+    function parseFen(fen) {
+      const rows = fenBoardPart(fen).split('/');
+      const board = [];
+
+      for (const row of rows) {
+        for (const ch of row) {
+          if (/\d/.test(ch)) {
+            const n = parseInt(ch, 10);
+            for (let i = 0; i < n; i += 1) board.push('');
+          } else {
+            board.push(ch);
+          }
+        }
+      }
+
+      return board;
+    }
+
+    function indexToSquare(index) {
+      const file = 'abcdefgh'[index % 8];
+      const rank = 8 - Math.floor(index / 8);
+      return `${file}${rank}`;
+    }
+
+    function squareToIndex(square) {
+      const file = square.charCodeAt(0) - 'a'.charCodeAt(0);
+      const rank = parseInt(square[1], 10);
+      return (8 - rank) * 8 + file;
+    }
+
+    function isWhitePiece(piece) {
+      return piece && piece === piece.toUpperCase();
+    }
+
+    function currentTurnIsWhite() {
+      return fenTurnPart(currentFen) === 'w';
+    }
+
+    function clearSelection(render = true) {
+      selectedSquare = null;
+      legalTargets = [];
+      if (render) renderBoard();
+    }
+
+    function getPseudoLegalTargets(square) {
+      const board = parseFen(currentFen);
+      const index = squareToIndex(square);
+      const piece = board[index];
+      if (!piece) return [];
+
+      const movingWhite = isWhitePiece(piece);
+      if (movingWhite !== currentTurnIsWhite()) return [];
+
+      const coords = (sq) => [sq.charCodeAt(0) - 97, parseInt(sq[1], 10) - 1];
+      const from = coords(square);
+      const targets = [];
+
+      function addRay(dFile, dRank, repeat = true) {
+        let [f, r] = from;
+
+        while (true) {
+          f += dFile;
+          r += dRank;
+
+          if (f < 0 || f > 7 || r < 0 || r > 7) break;
+
+          const sq = 'abcdefgh'[f] + String(r + 1);
+          const targetPiece = board[squareToIndex(sq)];
+
+          if (!targetPiece) {
+            targets.push(sq);
+          } else {
+            if (isWhitePiece(targetPiece) !== movingWhite) targets.push(sq);
+            break;
+          }
+
+          if (!repeat) break;
+        }
+      }
+
+      const lower = piece.toLowerCase();
+
+      if (lower === 'p') {
+        const dir = movingWhite ? 1 : -1;
+        const startRank = movingWhite ? 2 : 7;
+        const oneRank = from[1] + 1 + dir;
+
+        if (oneRank >= 1 && oneRank <= 8) {
+          const one = 'abcdefgh'[from[0]] + String(oneRank);
+          if (!board[squareToIndex(one)]) {
+            targets.push(one);
+
+            if (parseInt(square[1], 10) === startRank) {
+              const two = 'abcdefgh'[from[0]] + String(from[1] + 1 + 2 * dir);
+              if (!board[squareToIndex(two)]) targets.push(two);
+            }
+          }
+        }
+
+        for (const df of [-1, 1]) {
+          const f = from[0] + df;
+          const r = from[1] + dir;
+          if (f >= 0 && f <= 7 && r >= 0 && r <= 7) {
+            const sq = 'abcdefgh'[f] + String(r + 1);
+            const targetPiece = board[squareToIndex(sq)];
+            if (targetPiece && isWhitePiece(targetPiece) !== movingWhite) {
+              targets.push(sq);
+            }
+          }
+        }
+      } else if (lower === 'n') {
+        for (const [df, dr] of [[1,2],[2,1],[2,-1],[1,-2],[-1,-2],[-2,-1],[-2,1],[-1,2]]) {
+          const f = from[0] + df;
+          const r = from[1] + dr;
+          if (f < 0 || f > 7 || r < 0 || r > 7) continue;
+          const sq = 'abcdefgh'[f] + String(r + 1);
+          const targetPiece = board[squareToIndex(sq)];
+          if (!targetPiece || isWhitePiece(targetPiece) !== movingWhite) targets.push(sq);
+        }
+      } else if (lower === 'b') {
+        [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([df, dr]) => addRay(df, dr, true));
+      } else if (lower === 'r') {
+        [[1,0],[-1,0],[0,1],[0,-1]].forEach(([df, dr]) => addRay(df, dr, true));
+      } else if (lower === 'q') {
+        [[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]].forEach(([df, dr]) => addRay(df, dr, true));
+      } else if (lower === 'k') {
+        [[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]].forEach(([df, dr]) => addRay(df, dr, false));
+      }
+
+      return targets;
+    }
+
+    function renderBoard() {
+      const root = document.getElementById('board');
+      root.innerHTML = '';
+
+      const board = parseFen(currentFen || '8/8/8/8/8/8/8/8 w - - 0 1');
+
+      for (let i = 0; i < 64; i += 1) {
+        const square = indexToSquare(i);
+        const piece = board[i];
+
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'square ' + (((Math.floor(i / 8) + (i % 8)) % 2 === 0) ? 'light' : 'dark');
+
+        if (square === selectedSquare) el.classList.add('selected');
+        if (legalTargets.includes(square)) el.classList.add('target');
+
+        el.dataset.square = square;
+        el.setAttribute('aria-label', square + (piece ? ' ' + piece : ' vazia'));
+	el.textContent = PIECES[piece] || '';
+
+        if (piece) {
+          el.classList.add(piece === piece.toUpperCase() ? 'piece-white' : 'piece-black');
+        }
+
+        el.addEventListener('click', () => handleSquareClick(square));
+
+        root.appendChild(el);
+      }
+    }
+
+    async function loadCurrent() {
+      const response = await fetch('/api/current');
+      const data = await response.json();
+
+      if (data.completed) {
+        window.location.href = data.report_url;
+        return;
+      }
+
+      const ex = data.exercise;
+      currentFen = ex.fen;
+      clearSelection(false);
+      renderBoard();
+
+      document.getElementById('title').textContent = ex.title;
+      document.getElementById('description').textContent = ex.description;
+      document.getElementById('progress').textContent = `${ex.index} / ${ex.total}`;
+      document.getElementById('turn').textContent = ex.turn === 'white' ? 'Brancas' : 'Pretas';
+      document.getElementById('errors').textContent = ex.wrong_moves_count;
+      setMessage('');
+    }
+
+    function buildUci(from, to) {
+      const movingPiece = parseFen(currentFen)[squareToIndex(from)];
+      if (!movingPiece) return from + to;
+
+      const lower = movingPiece.toLowerCase();
+      if (lower === 'p' && (to.endsWith('8') || to.endsWith('1'))) {
+        return from + to + 'q';
+      }
+
+      return from + to;
+    }
+
+    async function submitMove(move) {
+      const response = await fetch('/api/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ move })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(data.message || 'Erro ao enviar lance.', true);
+        clearSelection();
+        return;
+      }
+
+      if (data.status === 'wrong') {
+        document.getElementById('errors').textContent = data.wrong_moves_count;
+        setMessage(data.message, true);
+        clearSelection();
+        return;
+      }
+
+      if (data.status === 'correct') {
+        currentFen = data.fen;
+        document.getElementById('errors').textContent = data.wrong_moves_count;
+        setMessage(data.message);
+        clearSelection();
+        return;
+      }
+
+      if (data.status === 'solved') {
+        setMessage(data.message);
+        await loadCurrent();
+        return;
+      }
+
+      if (data.completed) {
+        window.location.href = data.report_url;
+      }
+    }
+
+    function handleSquareClick(square) {
+      if (!currentFen) return;
+
+      if (!selectedSquare) {
+        const targets = getPseudoLegalTargets(square);
+        if (targets.length === 0) return;
+
+        selectedSquare = square;
+        legalTargets = targets;
+        renderBoard();
+        return;
+      }
+
+      if (square === selectedSquare) {
+        clearSelection();
+        return;
+      }
+
+      if (!legalTargets.includes(square)) {
+        const targets = getPseudoLegalTargets(square);
+
+        if (targets.length > 0) {
+          selectedSquare = square;
+          legalTargets = targets;
+          renderBoard();
+        } else {
+          clearSelection();
+        }
+        return;
+      }
+
+      const move = buildUci(selectedSquare, square);
+      clearSelection();
+      submitMove(move);
+    }
+
+    renderBoard();
+    loadCurrent();
+  </script>
+</body>
+</html>
