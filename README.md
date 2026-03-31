@@ -11,12 +11,65 @@
 - emite um relatório simples ao final
 
 ## Como rodar
+
+### Linux e MacOS
+
+1. Clonar o projeto.
+Para isso, abrir o terminal e executar:
+```bash
+git clone https://github.com/andreavb/picapau-mvp.git
+cd picapau-mvp
+```
+
+2. Criar o ambiente virtual e ativá-lo:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
+
+3. Instalar as dependências:
+```bash
 pip install -r requirements.txt
+```
+
+4. Inserir sua própria base de exercícios em `exercises.json`.
+
+5. Executar o aplicativo:
+```bash
 python app.py
 ```
+
+### Windows
+
+1. Instalar o [Python](https://www.python.org/downloads/windows/) caso ainda não tenha.
+IMPORTANTE: Durante a instalação, marcar `☑ Add Python to PATH`.
+
+2. Clonar o projeto.
+Para isso, abrir o terminal (`CMD`) e executar:
+```bash
+git clone https://github.com/andreavb/picapau-mvp.git
+cd picapau-mvp
+```
+
+3. Criar o ambiente virtual e ativá-lo:
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+4. Instalar as dependências:
+```bash
+pip install -r requirements.txt
+```
+
+5. Inserir sua própria base de exercícios em `exercises.json`.
+
+6. Executar o aplicativo:
+```bash
+python3 app.py
+```
+
+## Acessando o aplicativo
 
 Depois, abra `http://127.0.0.1:5000`, caso esteja rodando o servidor localmente.
 Caso esteja usando uma máquina remota (por exemplo, EC2), abra `http://[IP_DA_MÁQUINA]:5000`.
@@ -33,11 +86,11 @@ Cada exercício usa a seguinte estrutura:
 Exemplo:
 ```json
 {
-  "id": "ex001",
-  "title": "Mate em 1",
-  "description": "Brancas jogam.",
-  "fen": "6k1/5ppp/8/8/8/8/5PPP/6KQ w - - 0 1",
-  "solution": ["h1h8"]
+    "id": "ex001",
+    "title": "Mate em 1 #1",
+    "description": "Brancas jogam.",
+    "fen": "k7/8/K7/8/8/8/8/Q7 w - - 0 1",
+    "solution": ["a1h8"]
 }
 ```
 
